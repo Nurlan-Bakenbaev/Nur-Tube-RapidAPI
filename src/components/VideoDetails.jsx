@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ReactPlayer from "react-player";
 import { Link, useParams } from "react-router-dom";
-import { fetchFromAPI } from "./helpers/fetchFromAPI";
+import { fetchFromAPI } from "../services/videoApi";
 import Videos from "./Videos";
 import Comments from "./Comments";
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import SideBar from "./SideBar";
 import Videos from "./Videos";
-import { fetchFromAPI } from "./helpers/fetchFromAPI";
+import { fetchFromAPI } from "../services/videoApi";
 
 export default function Feed() {
   const [selectedCategory, setSelectedCategory] = useState("New");
