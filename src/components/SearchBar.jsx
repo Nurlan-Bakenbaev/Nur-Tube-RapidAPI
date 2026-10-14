@@ -1,45 +1,8 @@
-import React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Paper, IconButton } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-const SearchBar = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+export default function SearchBar() {
+  const [term, setTerm] = useState("");
   const navigate = useNavigate();
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (searchTerm) {
-      navigate(`/search/${searchTerm}`);
-    }
-    setSearchTerm("");
-  };
-  return (
-    <Paper
-      component="form"
-      onSubmit={handleSubmit}
-      sx={{
-        borderRadius: "20px",
-        pl: 2,
-        boxShadow: "none",
-        display: "flex",
-        alignItems: "center",
-        width: { xs: "40%" },
-        mr: { sm: 3 },
-      }}
-    >
-      <input
-        className="flex-1 p-1 outline-none w-3"
-        placeholder="Search..."
-        type="text"
-        onChange={(e) => setSearchTerm(e.target.value)}
-        value={searchTerm}
-      />
-      <IconButton type="submit" sx={{ p: "10px", color: "black" }}>
-        <SearchIcon />
-      </IconButton>
-    </Paper>
-  );
-};
-
-export default SearchBar;
+  return <form className="search-form" onSubmit={e => { e.preventDefault(); if (term.trim()) navigate(`/search/${encodeURIComponent(term.trim())}`); }}><input aria-label="Search videos" placeholder="Search videos" value={term} onChange={e => setTerm(e.target.value)} /><button aria-label="Search" type="submit"><SearchIcon /></button></form>;
+}

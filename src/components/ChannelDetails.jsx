@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { Box } from "@mui/material";
 import Videos from "./Videos";
 import ChannelCard from "./ChannelCard";
-import { fetchFromAPI } from "./helpers/fetchFromAPI";
+import { fetchFromAPI } from "../services/videoApi";
 
 const ChannelDetails = () => {
   const [channelDetail, setChannelDetail] = useState(null);

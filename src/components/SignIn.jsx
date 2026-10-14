@@ -1,133 +1,58 @@
-import React, { useState } from "react";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
-import auth from "./helpers/firebase";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { Link } from "react-router-dom";
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import auth from "./helpers/firebase";
 
-const SignIn = () => {
+export default function SignIn() {
+  const [user, setUser] = useState(null);
+  const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [login, setLogin] = useState();
-
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-
-        setLogin(user);
-        localStorage.setItem("user", JSON.stringify(user));
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  };
-  const handleSignIn = (e) => {
-    e.preventDefault();
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        console.log("User signed in:", user);
-        setLogin(user);
-        localStorage.setItem("user", JSON.stringify(user));
-      })
-      .catch((error) => {
-        console.error(error);
-      });
-  };
-
-  const handleSignOut = (e) => {
-    e.preventDefault();
-    signOut(auth)
-      .then(() => {})
-      .catch((error) => {});
-    setLogin(null);
-    localStorage.removeItem("user");
-  };
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const dialog = useRef(null);
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) {
-      setLogin(storedUser);
-    }
+    const open = () => { setError(""); dialog.current?.showModal(); };
+    window.addEventListener("open-sign-in", open);
+    return () => window.removeEventListener("open-sign-in", open);
   }, []);
-
-  if (login) {
-    return (
-      <div className="text-white flex gap-3 items-center">
-        <Link to={'/mychannel'}>
-          <div className="uppercase  rounded-full w-8 h-8  bg-purple-500 flex items-center justify-center">
-            {login.email.slice(0, 1)}
-          </div>
-        </Link>
-        <div className=" gap-3 flex items-center ">
-         <span className="hidden md:block">{login.email}</span> 
-          <button
-            onClick={handleSignOut}
-            className="rounded-full lg:rounded-md w-full  py-1 px-1.5 lg:px-2 lg:py-1 border border-transparent text-sm font-medium  text-white bg-[#ff6e40] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <span className="hidden lg:block">Sign Out</span>
-            <span className="block lg:hidden " > <ExitToAppIcon/> </span>
-          </button>
-        </div>
-      </div>
-    );
-  } else
-    return (
-      <div className=" bg-none py-2 px-4 sm:px-6 lg:px-8">
-        <div className="">
-          <form>
-            <div className="rounded-md  flex flex-row gap-2">
-              <div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2 border text-gray-700 placeholder-gray-400 focus:outline-none focus:z-10 sm:text-sm"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none rounded-lg relative block w-full px-3 py-2 border text-gray-700 placeholder-gray-400 focus:outline-nonefocus:z-10 sm:text-sm"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSignUp}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#ff6e40] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <span>Login</span>
-                </button>
-                <button
-                  onClick={handleSignIn}
-                  className="group relative w-full flex justify-center py-2 px-3 border border-transparent text-sm font-medium rounded-md text-white bg-[#ff6e40] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <span>SignUp</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-};
-
-export default SignIn;
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await (mode === "signin" ? signInWithEmailAndPassword : createUserWithEmailAndPassword)(auth, email.trim(), password);
+      setPassword(""); dialog.current.close();
+    } catch (err) {
+      const messages = {
+        "auth/invalid-credential": "Your email or password is incorrect.",
+        "auth/wrong-password": "Your email or password is incorrect.",
+        "auth/user-not-found": "Your email or password is incorrect.",
+        "auth/email-already-in-use": "An account already exists with this email. Try signing in.",
+        "auth/too-many-requests": "Too many attempts. Please try again later.",
+        "auth/network-request-failed": "Unable to connect. Check your connection and try again.",
+      };
+      setError(messages[err.code] || "Unable to continue. Please check your details and try again.");
+    } finally { setBusy(false); }
+  }
+  async function logout() {
+    try { await signOut(auth); localStorage.removeItem("user"); }
+    catch { setError("Unable to sign out. Please try again."); }
+  }
+  return <>
+    {user ? <div className="account-actions"><Link to="/mychannel" className="avatar" aria-label="My channel">{(user.email || "U")[0].toUpperCase()}</Link><button className="quiet-button" onClick={logout}>Sign out</button>{error && <span role="alert">{error}</span>}</div>
+      : <button className="sign-in-button" onClick={() => { setError(""); dialog.current.showModal(); }}><span aria-hidden="true">◎</span> Sign in</button>}
+    <dialog ref={dialog} className="auth-dialog" onClick={e => { if (e.target === dialog.current && !busy) dialog.current.close(); }} onCancel={e => { if (busy) e.preventDefault(); }}>
+      <button className="close-dialog" aria-label="Close sign in" disabled={busy} onClick={() => dialog.current.close()}>×</button>
+      <div className="brand-mark" aria-hidden="true">▶</div><h1>{mode === "signin" ? "Sign in" : "Create your account"}</h1>
+      <p className="muted">{mode === "signin" ? "Continue to NurTube. Join the conversation." : "Your next favorite video is waiting."}</p>
+      <form onSubmit={submit}>
+        <label htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} />
+        <label htmlFor="auth-password">Password</label><input id="auth-password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={mode === "signup" ? 6 : undefined} required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
+        {mode === "signup" && <p className="muted small">Use at least 6 characters.</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="auth-footer"><button type="button" className="text-button" disabled={busy} onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); }}>{mode === "signin" ? "Create account" : "Sign in instead"}</button><button className="primary-button" disabled={busy}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</button></div>
+      </form>
+    </dialog>
+  </>;
+}
